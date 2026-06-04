@@ -1,0 +1,13 @@
+Standard Non-Disclosure Agreement (NDA) Template - Indian Contract Act 1872
+
+This Agreement is made under the provisions of the Indian Contract Act, 1872.
+
+1. Definition of Confidential Information: 'Confidential Information' means all proprietary information disclosed by one party to the other, whether orally or in writing.
+
+2. Non-Disclosure Obligations: The receiving party shall hold the Confidential Information in strict confidence and shall not disclose it to any third party without written consent.
+
+3. Permitted Disclosures: The receiving party may disclose Confidential Information to its employees on a need-to-know basis, or if required under standard judicial orders.
+
+4. Governing Law and Jurisdiction: This Agreement shall be governed by and construed in accordance with the laws of India, and any disputes shall be subject to the exclusive jurisdiction of courts located in Mumbai, India.
+
+5. Term and Termination: The obligations under this Agreement shall survive for a period of 3 (three) years from the date of disclosure.

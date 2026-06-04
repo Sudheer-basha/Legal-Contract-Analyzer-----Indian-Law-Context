@@ -1,0 +1,353 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: contract-analyzer
+
+---
+# Secret containing external configurations like Groq
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: contract-analyzer
+type: Opaque
+data:
+  # Base64 encoded placeholder values, to be updated by ops
+  groq-api-key: dGVzdF9rbGV5X2dvZXNfaGVyZQ== # base64 of 'test_kley_goes_here'
+
+---
+# Persistent Volume Claim for PostgreSQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: contract-analyzer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Persistent Volume Claim for Qdrant Vectors Database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-pvc
+  namespace: contract-analyzer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Encrypted Volume PVC for Sensitive Legal Contracts
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: encrypted-document-storage-pvc
+  namespace: contract-analyzer
+  annotations:
+    # Example storage class that leverages encrypted-at-rest provisioners
+    volume.beta.kubernetes.io/storage-class: "encrypted-gp2"
+spec:
+  accessModes:
+    - ReadWriteMany # Allows web pod and celery workers to share storage
+  resources:
+    requests:
+      storage: 15Gi
+
+---
+# Redis Message Broker Deployment & Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-broker
+  namespace: contract-analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: contract-analyzer
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+# PostgreSQL Database Deployment & Service
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-db
+  namespace: contract-analyzer
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_DB
+          value: "contract_analyzer"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: contract-analyzer
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+# Qdrant Vector Search Engine StatefulSet & Service
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant-vectordb
+  namespace: contract-analyzer
+spec:
+  serviceName: qdrant-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:latest
+        ports:
+        - containerPort: 6333
+        - containerPort: 6334
+        volumeMounts:
+        - name: qdrant-storage
+          mountPath: /qdrant/storage
+  volumeClaimTemplates:
+  - metadata:
+      name: qdrant-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-service
+  namespace: contract-analyzer
+spec:
+  selector:
+    app: qdrant
+  ports:
+  - name: http
+    port: 6333
+    targetPort: 6333
+  - name: grpc
+    port: 6334
+    targetPort: 6334
+
+---
+# FastAPI App Server Deployment & ClusterIP Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: contract-analyzer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      containers:
+      - name: api
+        image: custom-registry/contract-analyzer-api:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: USE_SQLITE
+          value: "false"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "contract_analyzer"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: QDRANT_HOST
+          value: "qdrant-service"
+        - name: QDRANT_PORT
+          value: "6333"
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: groq-api-key
+        - name: SIMULATE_BACKGROUND_SERVICES
+          value: "false"
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: shared-docs
+          mountPath: /workspace/uploads
+      volumes:
+      - name: shared-docs
+        persistentVolumeClaim:
+          claimName: encrypted-document-storage-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-api-service
+  namespace: contract-analyzer
+spec:
+  selector:
+    app: web-api
+  ports:
+  - port: 8000
+    targetPort: 8000
+
+---
+# Celery Workers Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: contract-analyzer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      containers:
+      - name: worker
+        image: custom-registry/contract-analyzer-api:latest
+        imagePullPolicy: IfNotPresent
+        command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+        env:
+        - name: USE_SQLITE
+          value: "false"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "contract_analyzer"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: QDRANT_HOST
+          value: "qdrant-service"
+        - name: QDRANT_PORT
+          value: "6333"
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: groq-api-key
+        - name: SIMULATE_BACKGROUND_SERVICES
+          value: "false"
+        volumeMounts:
+        - name: shared-docs
+          mountPath: /workspace/uploads
+      volumes:
+      - name: shared-docs
+        persistentVolumeClaim:
+          claimName: encrypted-document-storage-pvc
+
+---
+# Ingress Controller Rules
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: contract-analyzer-ingress
+  namespace: contract-analyzer
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: contract-analyzer.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-api-service
+            port:
+              number: 8000

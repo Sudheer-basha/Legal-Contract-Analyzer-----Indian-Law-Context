@@ -1,0 +1,11 @@
+Standard Master Service Agreement (MSA) - Indian Corporate Context
+
+1. Scope of Work: The Vendor shall provide the services specified in the individual Statements of Work (SOW) signed by both parties.
+
+2. Payment Terms: Payments shall be made within 45 (forty-five) days of receipt of a valid tax invoice. Late payments shall incur an interest fee of 12% per annum.
+
+3. Limitation of Liability: Neither party shall be liable for indirect, incidental, or consequential damages. The Vendor's maximum liability under this agreement shall be capped at the total fees paid in the preceding 6 months.
+
+4. Indemnification: The Vendor shall indemnify and hold harmless the Client against any third-party claims resulting from intellectual property infringement or gross negligence of the Vendor.
+
+5. Force Majeure: Neither party shall be liable for failure to perform due to acts of God, war, government regulations, pandemics, or other events beyond their reasonable control.

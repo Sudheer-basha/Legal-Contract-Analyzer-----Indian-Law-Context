@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NyayaSutra — Legal Contract Analyzer (Indian Law Context)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- GSAP (GreenSock) CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="stylesheet" href="/assets/style.css?v=1.1.4">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon"><i data-lucide="scale"></i></div>
+                <div class="logo-text">NyayaSutra</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-tab="upload"><i data-lucide="upload-cloud"></i> Portal & Upload</a>
+                <a href="#" class="nav-item" data-tab="reviewer"><i data-lucide="shield-alert"></i> Reviewer Queue <span class="badge" id="queue-badge">0</span></a>
+                <a href="#" class="nav-item" data-tab="explorer"><i data-lucide="file-search"></i> Clause Explorer</a>
+                <a href="#" class="nav-item" data-tab="chat"><i data-lucide="messages-square"></i> Dialogue AI</a>
+                <a href="#" class="nav-item" data-tab="metrics"><i data-lucide="bar-chart-3"></i> Observability</a>
+                <a href="#" class="nav-item" data-tab="admin"><i data-lucide="shield-check"></i> Admin Console</a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile" id="user-profile-btn" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="avatar"><i data-lucide="gavel"></i></div>
+                        <div class="profile-info" style="flex: 1;">
+                            <span class="user-name" id="display-user-name">Guest User</span>
+                            <span class="user-role" id="display-user-role">No Active Session</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-icon" id="btn-logout" style="width: 100%; justify-content: center; height: 32px; padding: 4px; font-size: 11px;"><i data-lucide="log-out" style="width: 12px; height: 12px;"></i> Log Out</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-search">
+                    <span class="search-title">Legal Contract Analyzer — Indian Law Compliance Platform</span>
+                </div>
+                <div class="header-actions">
+                    <div class="theme-selector-container" style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
+                        <i data-lucide="palette" style="color: var(--primary-neon); width: 16px; height: 16px;"></i>
+                        <select id="theme-selector" class="select-dropdown" style="padding: 6px 12px; font-size: 12px; width: auto; min-width: 140px; height: 34px;">
+                            <option value="cyber-neon">Cyber Neon</option>
+                            <option value="emerald-court">Emerald Court</option>
+                            <option value="nordic-obsidian">Nordic Obsidian</option>
+                            <option value="sunset-copper">Sunset Copper</option>
+                        </select>
+                    </div>
+                    <div class="connection-status online" id="api-status">
+                        <span class="status-dot"></span> API Connected (SQLite fallback)
+                    </div>
+                </div>
+            </header>
+
+            <!-- TAB CONTENTS -->
+            <div class="tab-viewport">
+                <!-- UPLOAD / PORTAL TAB -->
+                <section class="tab-pane active" id="tab-upload">
+                    <div class="dashboard-grid">
+                        <div class="card glass hero-card">
+                            <h1>Ingest & Evaluate Legal Contracts</h1>
+                            <p>Upload standard NDA, employment agreements, service agreements, or RERA sale deeds in PDF or Word formats. Supports both Hindi (Devanagari) and English text.</p>
+                            
+                            <!-- Drag and Drop Area -->
+                            <div class="drop-zone" id="file-drop-zone">
+                                <input type="file" id="file-input" accept=".pdf,.docx" style="display:none;">
+                                <div class="drop-zone-icon"><i data-lucide="folder-open"></i></div>
+                                <h3>Drag & Drop Contract</h3>
+                                <p>PDF or DOCX (max size 15MB)</p>
+                                <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">Browse Files</button>
+                            </div>
+                        </div>
+
+
+                        <!-- Active Ingestion Tasks -->
+                        <div class="card glass tasks-card">
+                            <h2 class="section-title"><i data-lucide="cpu"></i> Contracts Repository</h2>
+                            <div class="contract-list" id="contracts-list-container">
+                                <!-- Dynamic Contract list items -->
+                                <div class="empty-state">
+                                    <i data-lucide="file-question"></i>
+                                    <p>No contracts uploaded yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- REVIEWER QUEUE TAB -->
+                <section class="tab-pane" id="tab-reviewer">
+                    <div class="metrics-strip-simple">
+                        <div class="card glass stat-mini">
+                            <span class="stat-label">Pending Reviews</span>
+                            <span class="stat-val" id="rev-pending-count">0</span>
+                        </div>
+                        <div class="card glass stat-mini">
+                            <span class="stat-label">Average Approval Time</span>
+                            <span class="stat-val" id="rev-avg-time">0.0m</span>
+                        </div>
+                        <div class="card glass stat-mini">
+                            <span class="stat-label">Approval Rate</span>
+                            <span class="stat-val" id="rev-app-rate">0.0%</span>
+                        </div>
+                    </div>
+
+                    <div class="card glass reviewer-table-card">
+                        <h2 class="section-title"><i data-lucide="clipboard-list"></i> Reviewer Queue Dashboard</h2>
+                        <div class="table-container">
+                            <table class="reviewer-table">
+                                <thead>
+                                    <tr>
+                                        <th>Contract Name</th>
+                                        <th>Uploaded At</th>
+                                        <th>Language</th>
+                                        <th>AI Risk Assessment</th>
+                                        <th>Review Workflow Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviewer-queue-tbody">
+                                    <!-- Dynamic rows -->
+                                    <tr>
+                                        <td colspan="6" class="table-empty">
+                                            <i data-lucide="smile"></i> No contracts pending review.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CLAUSE EXPLORER TAB (SPLIT WORKSPACE) -->
+                <section class="tab-pane" id="tab-explorer">
+                    <div class="contract-selector-bar card glass">
+                        <label for="explorer-contract-select">Selected Contract:</label>
+                        <select id="explorer-contract-select" class="select-dropdown">
+                            <option value="">-- Select a contract to explore --</option>
+                        </select>
+                        <button class="btn btn-secondary btn-icon" id="btn-export-pdf" disabled><i data-lucide="download"></i> Export PDF Report</button>
+                        <button class="btn btn-secondary btn-icon" id="btn-share-contract" disabled><i data-lucide="share-2"></i> Share Link</button>
+                    </div>
+
+                    <div class="explorer-workspace" id="explorer-workspace-container" style="display: none;">
+                        <!-- Left Panel: Raw Contract Text with inline annotations -->
+                        <div class="explorer-left card glass">
+                            <h3><i data-lucide="file-text"></i> Clause Index & Annotation Map</h3>
+                            <div class="clauses-annotation-list" id="explorer-clauses-list">
+                                <!-- Clauses inserted dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Legal Analysis & Audit Console -->
+                        <div class="explorer-right">
+                            <!-- Category and Risk details Card -->
+                            <div class="card glass analysis-details-card">
+                                <div class="badge-row">
+                                    <span class="category-tag" id="exp-clause-category">Select a clause</span>
+                                    <span class="risk-pill low" id="exp-clause-risk">LOW RISK</span>
+                                </div>
+                                <h3 id="exp-clause-title">Clause Details</h3>
+                                
+                                <div class="translation-block" id="exp-translation-block" style="display: none;">
+                                    <p class="meta-label">Original Text (Hindi):</p>
+                                    <blockquote id="exp-clause-hindi"></blockquote>
+                                </div>
+
+                                <p class="meta-label">English Terminology / Reference:</p>
+                                <blockquote id="exp-clause-english">Select a clause from the left list to inspect its contents.</blockquote>
+                                
+                                <div class="deviation-comparison-block">
+                                    <p class="meta-label">Side-by-Side Template Deviation:</p>
+                                    <div class="comparison-boxes">
+                                        <div class="comparison-box source">
+                                            <h4>Uploaded Contract Segment</h4>
+                                            <div id="comparison-uploaded">Select a clause</div>
+                                        </div>
+                                        <div class="comparison-box template">
+                                            <h4>Standard Indian Template Clause <span class="similarity-badge" id="exp-similarity-score">0% Match</span></h4>
+                                            <div id="comparison-template">Select a clause</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="meta-label">Indian Law Compliance Assessment:</p>
+                                <div class="explanation-box" id="exp-clause-explanation">
+                                    Assessments will detail violations of the Indian Contract Act 1872, RERA 2016, or IT Act 2000.
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Right Panel: Legal Reviewer Controls (Always visible side-by-side) -->
+                        <div class="explorer-reviewer-controls">
+                            <div class="card glass reviewer-controls-card" style="margin-bottom: 0;">
+                                <h3><i data-lucide="edit-3"></i> Legal Reviewer Controls</h3>
+                                <div class="override-grid">
+                                    <div class="form-group">
+                                        <label for="override-risk-select">Risk Override:</label>
+                                        <select id="override-risk-select" class="select-dropdown">
+                                            <option value="LOW">LOW</option>
+                                            <option value="MEDIUM">MEDIUM</option>
+                                            <option value="HIGH">HIGH</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="override-comments">Reviewer Comments / Audit Notes:</label>
+                                        <textarea id="override-comments" class="text-area" placeholder="Provide reason for risk overrides, if any..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="button-row">
+                                    <button class="btn btn-accent" id="btn-submit-override"><i data-lucide="check-square"></i> Apply Clause Override</button>
+                                </div>
+
+                                <hr class="divider">
+
+                                <div class="reviewer-workflow-action">
+                                    <h4>Approve or Escalate Contract Report</h4>
+                                    <p>Once all clauses are audited, finalize the report. Marking as APPROVED unlocks PDF generation for end users.</p>
+                                    <div class="form-group">
+                                        <label for="contract-audit-notes">Final Contract Audit Summary:</label>
+                                        <textarea id="contract-audit-notes" class="text-area" placeholder="Final summary notes for this contract..."></textarea>
+                                    </div>
+                                    <div class="button-row">
+                                        <button class="btn btn-primary" id="btn-contract-approve"><i data-lucide="thumbs-up"></i> Approve & Publish</button>
+                                        <button class="btn btn-danger" id="btn-contract-escalate"><i data-lucide="alert-triangle"></i> Escalate to Counsel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" id="explorer-prompt-empty">
+                        <i data-lucide="file-text"></i>
+                        <h2>Select a Contract</h2>
+                        <p>Choose an ingested contract from the selector dropdown to review and annotate clauses.</p>
+                    </div>
+                </section>
+
+                <!-- DIALOGUE / CHAT TAB -->
+                <section class="tab-pane" id="tab-chat">
+                    <div class="chat-mode-header card glass" id="chat-mode-selection-bar" style="margin-bottom: 16px; display: flex; gap: 16px; padding: 12px 20px; align-items: center;">
+                        <label style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Assistant Mode:</label>
+                        <div class="toggle-group" style="display: flex; gap: 8px; background: rgba(0, 217, 255, 0.05); padding: 4px; border-radius: 8px; border: 1px solid rgba(0, 217, 255, 0.15);">
+                            <button class="btn btn-secondary btn-icon active-toggle" id="btn-mode-contract" style="font-size: 11px; padding: 6px 12px; height: auto;">Document Chat (RAG)</button>
+                            <button class="btn btn-secondary btn-icon" id="btn-mode-general" style="font-size: 11px; padding: 6px 12px; height: auto;">General Counsel AI</button>
+                        </div>
+                    </div>
+
+                    <div class="contract-selector-bar card glass" id="chat-contract-selector-row">
+                        <label for="chat-contract-select">Chat context contract:</label>
+                        <select id="chat-contract-select" class="select-dropdown">
+                            <option value="">-- Select a contract to query --</option>
+                        </select>
+                    </div>
+
+                    <div class="chat-workspace" id="chat-workspace-container" style="display: none;">
+                        <div class="chat-history card glass" id="chat-history-container">
+                            <div class="chat-bubble assistant">
+                                <div class="bubble-meta">Dialogue AI</div>
+                                <div class="bubble-content">
+                                    Welcome to NyayaSutra chat! I am trained in Indian legal defaults. Select a contract above and ask me questions such as:
+                                    <br><br>
+                                    <ul>
+                                        <li>"Are there any illegal post-employment non-compete terms in this agreement?"</li>
+                                        <li>"Does the interest rate for payment defaults match standard RERA guidelines?"</li>
+                                        <li>"Is there a cap on the total liability under this contract?"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-bar">
+                            <input type="text" id="chat-user-input" class="text-input" placeholder="Type your legal query regarding the contract..." disabled>
+                            <button class="btn btn-primary btn-icon" id="btn-chat-send" disabled><i data-lucide="send"></i> Send</button>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" id="chat-prompt-empty">
+                        <i data-lucide="messages-square"></i>
+                        <h2>Select Chat Context</h2>
+                        <p>Pick a contract from the dropdown list to initiate a retrieval-augmented conversation regarding its terms.</p>
+                    </div>
+                </section>
+
+                <!-- OBSERVABILITY METRICS TAB -->
+                <section class="tab-pane" id="tab-metrics">
+                    <div class="metrics-grid">
+                        <div class="card glass metric-stat-card">
+                            <h3>Contracts Analyzed</h3>
+                            <h2 id="metric-total-contracts">0</h2>
+                            <p>Analyzed files in system</p>
+                        </div>
+                        <div class="card glass metric-stat-card">
+                            <h3>Avg Ingestion Time</h3>
+                            <h2>12.4s</h2>
+                            <p>Parser concurrency active</p>
+                        </div>
+                        <div class="card glass metric-stat-card">
+                            <h3>Escalation Rate</h3>
+                            <h2 id="metric-escalation-rate">0.0%</h2>
+                            <p>Contracts routed to senior counsel</p>
+                        </div>
+                        <div class="card glass metric-stat-card">
+                            <h3>Avg Clauses per Contract</h3>
+                            <h2 id="metric-avg-clauses">0</h2>
+                            <p>Logical segmentation blocks</p>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <!-- Chart 1: Risk score distribution -->
+                        <div class="card glass chart-card">
+                            <h3>AI Risk Class Distribution</h3>
+                            <div class="chart-container-wrapper">
+                                <canvas id="chart-risk-distribution"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Pipeline States -->
+                        <div class="card glass chart-card">
+                            <h3>Reviewer Decision Statistics</h3>
+                            <div class="chart-container-wrapper">
+                                <canvas id="chart-reviewer-actions"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Immutable Audit logs Table -->
+                    <div class="card glass audit-logs-card">
+                        <h2 class="section-title"><i data-lucide="shield-check"></i> Immutable System Audit Trail</h2>
+                        <div class="table-container">
+                            <table class="reviewer-table audit-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Event Code</th>
+                                        <th>Contract Reference ID</th>
+                                        <th>Event Details Summary</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metrics-audit-tbody">
+                                    <!-- Dynamic rows -->
+                                    <tr>
+                                        <td colspan="4" class="table-empty">No audit logs retrieved.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ADMIN CONSOLE TAB -->
+                <section class="tab-pane" id="tab-admin">
+                    <div class="dashboard-grid">
+                        <!-- User Creation Panel -->
+                        <div class="card glass">
+                            <h2 class="section-title"><i data-lucide="user-plus"></i> Create Legal System User</h2>
+                            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Provision credentials for advocates, lawyers, judges, or citizen accounts.</p>
+                            
+                            <form id="admin-create-user-form" style="display: flex; flex-direction: column; gap: 14px;">
+                                <div class="form-group">
+                                    <label for="admin-user-name" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Full Name</label>
+                                    <input type="text" id="admin-user-name" class="text-input" placeholder="e.g. Advocate Rajesh" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-user-email" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Email Address</label>
+                                    <input type="email" id="admin-user-email" class="text-input" placeholder="e.g. rajesh@nyayasutra.in" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-user-password" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Password</label>
+                                    <input type="password" id="admin-user-password" class="text-input" placeholder="••••••••" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-user-role" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">System Role</label>
+                                    <select id="admin-user-role" class="select-dropdown">
+                                        <option value="advocate">Advocate (Direct Chat + Upload)</option>
+                                        <option value="lawyer">Lawyer (Direct Chat + Upload)</option>
+                                        <option value="judge">Judge (Direct Chat + Telemetry)</option>
+                                        <option value="common">Citizen (Document doubt resolution)</option>
+                                        <option value="admin">Administrator (System Control)</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="justify-content: center; margin-top: 10px; padding: 12px; width: 100%;"><i data-lucide="user-check"></i> Register User Account</button>
+                            </form>
+                            <div id="admin-user-success-msg" style="color: var(--secondary-neon); font-size: 12px; margin-top: 12px; display: none; font-weight: 600;"></div>
+                            <div id="admin-user-error-msg" style="color: var(--danger-neon); font-size: 12px; margin-top: 12px; display: none; font-weight: 600;"></div>
+                        </div>
+
+                        <!-- System Configuration & Diagnostics -->
+                        <div class="card glass" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h2 class="section-title"><i data-lucide="cpu"></i> System Diagnostic Controls</h2>
+                                <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">System health telemetry and reset procedures.</p>
+                                
+                                <div class="explanation-box" style="margin-bottom: 20px;">
+                                    <div style="margin-bottom: 8px; font-size: 12px; font-weight: 600; color: white;">ACTIVE SERVICES PLATFORM</div>
+                                    <div style="font-size: 11px; display: flex; flex-direction: column; gap: 6px; color: #cbd5e1;">
+                                        <div><span class="status-dot" style="display:inline-block; vertical-align: middle; width: 6px; height: 6px; margin-right: 6px; background: var(--secondary-neon);"></span> Primary Database: PostgreSQL (Offline fallback to SQLite)</div>
+                                        <div><span class="status-dot" style="display:inline-block; vertical-align: middle; width: 6px; height: 6px; margin-right: 6px; background: var(--secondary-neon);"></span> Vector Indexer: Qdrant Engine (Fallback to Memory NumPy)</div>
+                                        <div><span class="status-dot" style="display:inline-block; vertical-align: middle; width: 6px; height: 6px; margin-right: 6px; background: var(--secondary-neon);"></span> Groq Legal LLM Status: Active (Simulated fallback if key missing)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                                <button class="btn btn-danger" id="btn-admin-flush-db" style="justify-content: center; width: 100%;"><i data-lucide="trash-2"></i> Wipe Test Data & Clear Database</button>
+                                <p style="font-size: 11px; color: #64748b; text-align: center;">Warning: Wiping the database clears all uploaded documents, annotated clauses, and chat histories.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users List Panel -->
+                    <div class="card glass" style="margin-top: 24px;">
+                        <h2 class="section-title"><i data-lucide="users"></i> Registered System Users</h2>
+                        <div class="table-container">
+                            <table class="reviewer-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email Address</th>
+                                        <th>Assigned Role</th>
+                                        <th>Registered Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-tbody">
+                                    <!-- Dynamic rows -->
+                                    <tr>
+                                        <td colspan="4" class="table-empty">Loading active system users...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Share Modal Overlay -->
+    <div class="modal-overlay" id="share-modal" style="display: none;">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3><i data-lucide="share-2"></i> Share Contract Analysis</h3>
+                <button class="btn-close" id="btn-close-share"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Copy the direct link below, or share directly via email or social apps:</p>
+                <div class="share-input-row">
+                    <input type="text" id="share-link-input" class="text-input" readonly>
+                    <button class="btn btn-primary" id="btn-copy-link"><i data-lucide="copy"></i> Copy</button>
+                </div>
+                <div class="social-share-row">
+                    <a href="#" target="_blank" class="social-btn whatsapp" id="share-whatsapp"><i data-lucide="phone"></i> WhatsApp</a>
+                    <a href="#" target="_blank" class="social-btn gmail" id="share-gmail"><i data-lucide="mail"></i> Gmail</a>
+                    <a href="#" target="_blank" class="social-btn telegram" id="share-telegram"><i data-lucide="send"></i> Telegram</a>
+                    <a href="#" target="_blank" class="social-btn email-client" id="share-email-client"><i data-lucide="mail-open"></i> Email App</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal Overlay -->
+    <div class="modal-overlay" id="login-overlay" style="display: flex; z-index: 2000;">
+        <div class="modal-content glass" style="max-width: 460px; padding: 30px; box-shadow: 0 0 50px rgba(0, 217, 255, 0.3); border: 1px solid rgba(0, 217, 255, 0.25);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div class="logo-icon" style="margin: 0 auto 15px auto; width: 60px; height: 60px;"><i data-lucide="scale"></i></div>
+                <h2 style="font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">NyayaSutra Legal Portal</h2>
+                <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">Sign in to access your legal dashboard</p>
+            </div>
+            
+            <!-- Tabs for switching Sign In and Create Account -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(15, 23, 42, 0.4); padding: 4px; border-radius: 8px; border: 1px solid rgba(0, 217, 255, 0.15);">
+                <button type="button" id="btn-login-tab-signin" class="btn active-toggle" style="flex: 1; padding: 10px; justify-content: center; font-size: 12px; font-weight: 600; border-radius: 6px;">Sign In</button>
+                <button type="button" id="btn-login-tab-signup" class="btn btn-secondary" style="flex: 1; padding: 10px; justify-content: center; font-size: 12px; font-weight: 600; border-radius: 6px;">Create Account</button>
+            </div>
+
+            <!-- Sign In section -->
+            <div id="login-signin-section">
+                <!-- Quick Demo Login Presets -->
+                <div style="margin-bottom: 20px;">
+                    <p class="meta-label" style="text-align: center; margin-bottom: 12px; font-size: 11px;">Quick Demo Access (Choose a Role)</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button type="button" class="btn btn-secondary btn-preset-login" data-preset="advocate" style="font-size: 11px; padding: 10px; justify-content: center; width: 100%;"><i data-lucide="briefcase" style="width: 14px; height: 14px;"></i> Advocate</button>
+                        <button type="button" class="btn btn-secondary btn-preset-login" data-preset="lawyer" style="font-size: 11px; padding: 10px; justify-content: center; width: 100%;"><i data-lucide="file-text" style="width: 14px; height: 14px;"></i> Lawyer</button>
+                        <button type="button" class="btn btn-secondary btn-preset-login" data-preset="judge" style="font-size: 11px; padding: 10px; justify-content: center; width: 100%;"><i data-lucide="gavel" style="width: 14px; height: 14px;"></i> Judge</button>
+                        <button type="button" class="btn btn-secondary btn-preset-login" data-preset="common" style="font-size: 11px; padding: 10px; justify-content: center; width: 100%;"><i data-lucide="user" style="width: 14px; height: 14px;"></i> Citizen</button>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-preset-login" data-preset="admin" style="font-size: 11px; padding: 10px; justify-content: center; width: 100%; margin-top: 8px;"><i data-lucide="shield" style="width: 14px; height: 14px;"></i> Administrator Control</button>
+                </div>
+                
+                <div style="text-align: center; margin: 15px 0; color: #64748b; font-size: 12px; position: relative; height: 20px;">
+                    <hr style="border: none; border-top: 1px solid rgba(0, 217, 255, 0.15); margin: 10px 0;">
+                    <span style="background: var(--dark-bg); padding: 0 10px; position: absolute; top: -1px; left: 50%; transform: translateX(-50%); font-weight: 600;">OR</span>
+                </div>
+                
+                <!-- Credentials Login Form -->
+                <form id="login-credentials-form" style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
+                    <div class="form-group">
+                        <label for="login-email" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Email Address</label>
+                        <input type="email" id="login-email" class="text-input" placeholder="e.g. name@legal.in" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Password</label>
+                        <input type="password" id="login-password" class="text-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-content: center; margin-top: 6px; padding: 12px; width: 100%;"><i data-lucide="log-in"></i> Sign In</button>
+                </form>
+            </div>
+
+            <!-- Create Account section -->
+            <div id="login-signup-section" style="display: none;">
+                <form id="login-register-form" style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
+                    <div class="form-group">
+                        <label for="register-name" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Full Name</label>
+                        <input type="text" id="register-name" class="text-input" placeholder="e.g. Advocate Rajesh" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Email Address</label>
+                        <input type="email" id="register-email" class="text-input" placeholder="e.g. name@legal.in" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Password</label>
+                        <input type="password" id="register-password" class="text-input" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-role" style="font-size: 11px; font-weight: 600; color: var(--primary-neon); text-transform: uppercase;">Desired Role</label>
+                        <select id="register-role" class="select-dropdown">
+                            <option value="advocate">Advocate (Direct Chat + Upload)</option>
+                            <option value="lawyer">Lawyer (Direct Chat + Upload)</option>
+                            <option value="judge">Judge (Direct Chat + Telemetry)</option>
+                            <option value="common">Citizen (Document doubt resolution)</option>
+                            <option value="admin">Administrator (System Control)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-content: center; margin-top: 6px; padding: 12px; width: 100%;"><i data-lucide="user-plus"></i> Create Account</button>
+                </form>
+            </div>
+            
+            <div id="login-error-msg" style="color: var(--danger-neon); font-size: 12px; text-align: center; margin-top: 12px; display: none; font-weight: 600;"></div>
+        </div>
+    </div>
+
+    <!-- Script imports -->
+    <script src="/assets/app.js?v=1.1.4"></script>
+</body>
+</html>
