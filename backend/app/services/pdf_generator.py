@@ -158,8 +158,7 @@ class PDFReportGenerator:
             story.append(KeepTogether(notes_section))
             
         story.append(PageBreak())
-        
-        # 5. Detailed Clause Annotations
+           # 5. Detailed Clause Annotations
         story.append(Paragraph("Detailed Clause-by-Clause Annotations", section_style))
         story.append(Spacer(1, 10))
         
@@ -177,79 +176,70 @@ class PDFReportGenerator:
             clause_title = f"Clause #{clause.get('sequence_number', idx+1)} — Page {clause.get('page_number', 1)}"
             clause_elements.append(Paragraph(f"<b>{clause_title}</b>", section_style))
             
-            # Sub-table inside the layout
-            clause_info = []
+            # Metadata Table (fits easily on a single page)
+            similarity = clause.get("similarity_score", 0.0)
+            sim_percent = f"{similarity * 100:.1f}% Match" if similarity > 0 else "0% Match"
             
-            # Text row (supporting Hindi translated side-by-side if required)
-            if clause.get("raw_text_hindi"):
-                clause_info.append([
-                    Paragraph("<b>Original Text (Hindi):</b>", bold_label_style),
-                    Paragraph(clause["raw_text_hindi"], clause_text_style)
-                ])
-                clause_info.append([
-                    Paragraph("<b>English Translation:</b>", bold_label_style),
-                    Paragraph(clause["raw_text_english"], body_style)
-                ])
-            else:
-                clause_info.append([
-                    Paragraph("<b>Clause Text:</b>", bold_label_style),
-                    Paragraph(clause["raw_text_english"], body_style)
-                ])
-                
-            clause_info.append([
-                Paragraph("<b>Category:</b>", bold_label_style),
-                Paragraph(clause.get("clause_type", "Other"), body_style)
-            ])
+            clause_meta_data = [
+                [
+                    Paragraph("<b>Category:</b>", bold_label_style),
+                    Paragraph(clause.get("clause_type", "Other"), body_style),
+                    Paragraph("<b>Risk Rating:</b>", bold_label_style),
+                    Paragraph(f"<font color='{risk_color}'><b>{risk}</b></font>", body_style),
+                    Paragraph("<b>Match Score:</b>", bold_label_style),
+                    Paragraph(sim_percent, body_style)
+                ]
+            ]
             
-            clause_info.append([
-                Paragraph("<b>Risk Rating:</b>", bold_label_style),
-                Paragraph(f"<font color='{risk_color}'><b>{risk}</b></font>", body_style)
-            ])
-            
-            clause_info.append([
-                Paragraph("<b>Risk Analysis:</b>", bold_label_style),
-                Paragraph(clause.get("risk_explanation", "No risk explanation provided."), body_style)
-            ])
-            
-            citations = clause.get("matched_template_clause")
-            # If there's legal citations
-            citations_list = clause.get("risk_explanation") # wait, legal citations are saved, let's extract them
-            # Let's check if we have a field for citations. In the model, we put it in risk_explanation or matched_template_clause.
-            # Let's check what fields we have: matched_template_clause, risk_explanation
-            if clause.get("matched_template_clause"):
-                # Check if similarity score
-                similarity = clause.get("similarity_score", 0.0)
-                sim_percent = f"{similarity * 100:.1f}%" if similarity > 0 else "0%"
-                clause_info.append([
-                    Paragraph("<b>Deviation Match:</b>", bold_label_style),
-                    Paragraph(f"Similar template clause found (Similarity: {sim_percent}):<br/><i>{clause.get('matched_template_clause')[:250]}...</i>", body_style)
-                ])
-                
-            if clause.get("reviewer_comments"):
-                clause_info.append([
-                    Paragraph("<b>Reviewer Comments:</b>", bold_label_style),
-                    Paragraph(clause["reviewer_comments"], body_style)
-                ])
-
-            clause_table = Table(clause_info, colWidths=[1.8 * inch, 5.2 * inch])
-            clause_table.setStyle(TableStyle([
-                ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#EDF2F7')),
+            meta_table = Table(clause_meta_data, colWidths=[1.0 * inch, 1.3 * inch, 1.0 * inch, 1.1 * inch, 1.0 * inch, 1.6 * inch])
+            meta_table.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F7FAFC')),
+                ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+                ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
                 ('PADDING', (0,0), (-1,-1), 4),
             ]))
+            clause_elements.append(meta_table)
+            clause_elements.append(Spacer(1, 6))
             
-            # Left boundary colored bar based on risk
-            outer_table = Table([[Paragraph("", body_style), clause_table]], colWidths=[0.1 * inch, 7.0 * inch])
-            outer_table.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (0,0), colors.HexColor(risk_color)),
-                ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+            # Text segments (Hindi & English)
+            if clause.get("raw_text_hindi"):
+                clause_elements.append(Paragraph("<b>Original Text (Hindi):</b>", bold_label_style))
+                clause_elements.append(Paragraph(clause["raw_text_hindi"], clause_text_style))
+                clause_elements.append(Spacer(1, 4))
+                clause_elements.append(Paragraph("<b>English Translation / Terminology:</b>", bold_label_style))
+                clause_elements.append(Paragraph(clause["raw_text_english"], body_style))
+            else:
+                clause_elements.append(Paragraph("<b>Clause Text:</b>", bold_label_style))
+                clause_elements.append(Paragraph(clause["raw_text_english"], body_style))
+            clause_elements.append(Spacer(1, 4))
+            
+            # Compliance Assessment
+            clause_elements.append(Paragraph("<b>Compliance Risk Assessment:</b>", bold_label_style))
+            clause_elements.append(Paragraph(clause.get("risk_explanation", "No explanation provided."), body_style))
+            clause_elements.append(Spacer(1, 4))
+            
+            # Deviation Template matched
+            if clause.get("matched_template_clause"):
+                clause_elements.append(Paragraph("<b>Deviation Match (Matched Standard Template):</b>", bold_label_style))
+                clause_elements.append(Paragraph(f"<i>{clause.get('matched_template_clause')}</i>", body_style))
+                clause_elements.append(Spacer(1, 4))
+                
+            # Reviewer comments
+            if clause.get("reviewer_comments"):
+                clause_elements.append(Paragraph("<b>Reviewer / Audit Comments:</b>", bold_label_style))
+                clause_elements.append(Paragraph(clause["reviewer_comments"], body_style))
+                clause_elements.append(Spacer(1, 4))
+                
+            # Separator line between clauses
+            line_table = Table([[""]], colWidths=[7.0 * inch])
+            line_table.setStyle(TableStyle([
+                ('LINEABOVE', (0,0), (-1,-1), 1, colors.HexColor('#CBD5E0')),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 12),
             ]))
+            clause_elements.append(line_table)
             
-            clause_elements.append(outer_table)
-            clause_elements.append(Spacer(1, 10))
-            
-            story.append(KeepTogether(clause_elements))
+            story.extend(clause_elements)
             
         doc.build(story)
         buffer.seek(0)
